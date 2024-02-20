@@ -1,359 +1,132 @@
-# Image/Manga Translator
+# 漫画图片翻译器 (中文说明)
 
-![Commit activity](https://img.shields.io/github/commit-activity/m/zyddnys/manga-image-translator)
-![Lines of code](https://img.shields.io/tokei/lines/github/zyddnys/manga-image-translator?label=lines%20of%20code)
-![License](https://img.shields.io/github/license/zyddnys/manga-image-translator)
-![Contributors](https://img.shields.io/github/contributors/zyddnys/manga-image-translator)
-[![Discord](https://img.shields.io/discord/739305951085199490?logo=discord&label=discord&logoColor=white)](https://discord.gg/Ak8APNy4vb)
+## 这里是本fork相关的说明
+中日翻译的项目自然拿中文readme当主readme了（不是
 
+现在最好的中日翻译之一应该是[Sakura-13B-Galgame](https://github.com/SakuraLLM/Sakura-13B-Galgame)，不过本项目自23年11月,[allegro0132](https://github.com/allegro0132)和[SpaceThing](https://github.com/SpaceThing)提出相关[issue](https://github.com/zyddnys/manga-image-translator/issues/522)并提供了相关代码后，原项目依然没有相关的支持。而在实际使用该issue中提供的代码时，发现作者可能是在mac环境下使用的，cuda环境并不支持。因此，我开了这么个fork。
 
-> Translate texts in manga/images.\
-> [中文说明](README_CN.md) | [Change Log](CHANGELOG.md) \
-> Join us on discord <https://discord.gg/Ak8APNy4vb>
+### 新增的内容
+1. 支持使用`--translator=sakura`直接启动一个Sakura-13B进行翻译。
+2. 支持使用`--translator=sakura_server`调用Sakura-13B的API接口。需要具体设置`manga_translator/translators/sakura_server.py`中的`self.endpoint`参数保证端口正确。
+3. 预设脚本`start.sh`，将要翻译的漫画文件夹放在`target`目录下，然后`start.sh <文件夹名>`就能直接启动单个翻译任务，结果文件夹保存在`translate_results`中
+4. 预设脚本`auto_start.sh`，将要翻译的漫画zip压缩包放在target目录下，会自动解包翻译打包保存在`translate_results`下。
+5. 翻以前会确认是否存在日语
+6. 选择最新的稳定版0.9b模型
 
-Some manga/images will never be translated, therefore this project is born.
+### 一些碎碎念
+测试中发现调用API的方式会使得GPU占用高于直接llama.cpp。原本希望通过API的形式实现开一个后端同时跑多个任务，但实际上24G显存依旧不完全够这么玩，毕竟ORC啥的模型也会多占一些位置，调整一部分layer到cpu上又会让效率比较残念，所以最后我是没真的用server版本。只能说希望这个项目原作者能早日支持多任务并行了。
 
-- [Preview](#samples)
-- [Demo](#online-demo)
-- [Disclaimer](#disclaimer)
-- [Getting Started](#installation)
-    - [Installation](#installation)
-        - [Venv](#pipvenv)
-        - [Poetry](#poetry)
-        - [Extra Windows Info](#additional-instructions-for-windows)
-        - [Docker](#docker)
-    - [Usage](#usage)
-        - [Batch mode](#batch-mode-default)
-        - [Demo mode](#demo-mode)
-        - [Web mode](#web-mode)
-        - [Api mode](#api-mode)
-    - [Related Projects](#related-projects)
-- [Docs](#docs)
-    - [Recommended Modules](#recommended-modules)
-    - [Args](#options)
-    - [Languages](#language-code-reference)
-    - [Translators](#translators-reference)
-    - [GPT config](#gpt-config-reference)
-    - [Gimp](#using-gimp-for-rendering)
-    - [Api Docs](#api-documentation)
-        - [v1](#api-documentation)
-        - [v2](#api-documentation)
-- [Roadmap](#next-steps)
-- [Support Us](#support-us)
+此外，虽说Sakura-13B效果已经不错，但机翻仍然是机翻，哎。。。
 
-## Samples
+---
+**以下是原本的readme**
+---
 
-Please note that the samples may not always be updated, they may not represent the current main branch version.
+> 一键翻译各类图片内文字\
+> [English](README_EN.md) | [更新日志](CHANGELOG_CN.md) \
+> 欢迎加入我们的 Discord <https://discord.gg/Ak8APNy4vb>
 
-<table>
-  <thead>
-    <tr>
-      <th align="center" width="50%">Original</th>
-      <th align="center" width="50%">Translated</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center" width="50%">
-        <a href="https://user-images.githubusercontent.com/31543482/232265329-6a560438-e887-4f7f-b6a1-a61b8648f781.png">
-          <img alt="佐藤さんは知っていた - 猫麦" src="https://user-images.githubusercontent.com/31543482/232265329-6a560438-e887-4f7f-b6a1-a61b8648f781.png" />
-        </a>
-        <br />
-        <a href="https://twitter.com/09ra_19ra/status/1647079591109103617/photo/1">(Source @09ra_19ra)</a>
-      </td>
-      <td align="center" width="50%">
-        <a href="https://user-images.githubusercontent.com/31543482/232265339-514c843a-0541-4a24-b3bc-1efa6915f757.png">
-          <img alt="Output" src="https://user-images.githubusercontent.com/31543482/232265339-514c843a-0541-4a24-b3bc-1efa6915f757.png" />
-        </a>
-        <br />
-        <a href="https://user-images.githubusercontent.com/31543482/232265376-01a4557d-8120-4b6b-b062-f271df177770.png">(Mask)</a>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" width="50%">
-        <a href="https://user-images.githubusercontent.com/31543482/232265479-a15c43b5-0f00-489c-9b04-5dfbcd48c432.png">
-          <img alt="Gris finds out she's of royal blood - VERTI" src="https://user-images.githubusercontent.com/31543482/232265479-a15c43b5-0f00-489c-9b04-5dfbcd48c432.png" />
-        </a>
-        <br />
-        <a href="https://twitter.com/VERTIGRIS_ART/status/1644365184142647300/photo/1">(Source @VERTIGRIS_ART)</a>
-      </td>
-      <td align="center" width="50%">
-        <a href="https://user-images.githubusercontent.com/31543482/232265480-f8ba7a28-846f-46e7-8041-3dcb1afe3f67.png">
-          <img alt="Output" src="https://user-images.githubusercontent.com/31543482/232265480-f8ba7a28-846f-46e7-8041-3dcb1afe3f67.png" />
-        </a>
-        <br />
-        <code>--detector ctd</code>
-        <a href="https://user-images.githubusercontent.com/31543482/232265483-99ad20af-dca8-4b78-90f9-a6599eb0e70b.png">(Mask)</a>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" width="50%">
-        <a href="https://user-images.githubusercontent.com/31543482/232264684-5a7bcf8e-707b-4925-86b0-4212382f1680.png">
-          <img alt="陰キャお嬢様の新学期🏫📔🌸 (#3) - ひづき夜宵🎀💜" src="https://user-images.githubusercontent.com/31543482/232264684-5a7bcf8e-707b-4925-86b0-4212382f1680.png" />
-        </a>
-        <br />
-        <a href="https://twitter.com/hiduki_yayoi/status/1645186427712573440/photo/2">(Source @hiduki_yayoi)</a>
-      </td>
-      <td align="center" width="50%">
-        <a href="https://user-images.githubusercontent.com/31543482/232264644-39db36c8-a8d9-4009-823d-bf85ca0609bf.png">
-          <img alt="Output" src="https://user-images.githubusercontent.com/31543482/232264644-39db36c8-a8d9-4009-823d-bf85ca0609bf.png" />
-        </a>
-        <br />
-        <code>--translator none</code>
-        <a href="https://user-images.githubusercontent.com/31543482/232264671-bc8dd9d0-8675-4c6d-8f86-0d5b7a342233.png">(Mask)</a>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" width="50%">
-        <a href="https://user-images.githubusercontent.com/31543482/232265794-5ea8a0cb-42fe-4438-80b7-3bf7eaf0ff2c.png">
-          <img alt="幼なじみの高校デビューの癖がすごい (#1) - 神吉李花☪️🐧" src="https://user-images.githubusercontent.com/31543482/232265794-5ea8a0cb-42fe-4438-80b7-3bf7eaf0ff2c.png" />
-        </a>
-        <br />
-        <a href="https://twitter.com/rikak/status/1642727617886556160/photo/1">(Source @rikak)</a>
-      </td>
-      <td align="center" width="50%">
-        <a href="https://user-images.githubusercontent.com/31543482/232265795-4bc47589-fd97-4073-8cf4-82ae216a88bc.png">
-          <img alt="Output" src="https://user-images.githubusercontent.com/31543482/232265795-4bc47589-fd97-4073-8cf4-82ae216a88bc.png" />
-        </a>
-        <br />
-        <a href="https://user-images.githubusercontent.com/31543482/232265800-6bdc7973-41fe-4d7e-a554-98ea7ca7a137.png">(Mask)</a>
-      </td>
-    </tr>
-  </tbody>
-</table>
+针对群内、各个图站上大量不太可能会有人去翻译的图片设计，让我这种日语小白能够勉强看懂图片\
+主要支持日语，汉语、英文和韩语\
+支持图片修补和嵌字\
+该项目是[求闻转译志](https://github.com/PatchyVideo/MMDOCR-HighPerformance)的 v2 版本
 
-## Online Demo
+**只是初步版本，我们需要您的帮助完善**\
+这个项目目前只完成了简单的 demo，依旧存在大量不完善的地方，我们需要您的帮助完善这个项目！
 
-Official Demo (by zyddnys): <https://touhou.ai/imgtrans/>\
-Browser Userscript (by QiroNT): <https://greasyfork.org/scripts/437569>
+## 支持我们
 
-- Note this may not work sometimes due to stupid google gcp kept restarting my instance.
-  In that case you can wait for me to restart the service, which may take up to 24 hrs.
-- Note this online demo is using the current main branch version.
+请支持我们使用 GPU 服务器，谢谢！
 
-## Disclaimer
-Successor to [MMDOCR-HighPerformance](https://github.com/PatchyVideo/MMDOCR-HighPerformance).\
-**This is a hobby project, you are welcome to contribute!**\
-Currently this only a simple demo, many imperfections exist, we need your support to make this project better!\
-Primarily designed for translating Japanese text, but also supports Chinese, English and Korean.\
-Supports inpainting, text rendering and colorization.
-## Installation
+- Ko-fi: <https://ko-fi.com/voilelabs>
+- Patreon: <https://www.patreon.com/voilelabs>
+- 爱发电: <https://afdian.net/@voilelabs>
 
-### Pip/venv
+## 在线版
+
+官方演示站 (由 zyddnys 维护)： <https://cotrans.touhou.ai/>\
+镜像站 (由 Eidenz 维护): <https://manga.eidenz.com/>\
+浏览器脚本 (由 QiroNT 维护): <https://greasyfork.org/scripts/437569>
+
+- 注意如果在线版无法访问说明 Google GCP 又在重启我的服务器，此时请等待我重新开启服务。
+- 在线版使用的是目前 main 分支最新版本。
+
+## 使用说明
 
 ```bash
-# First, you need to have Python(>=3.8) installed on your system
-# The latest version often does not work with some pytorch libraries yet
+# 首先，确信你的机器安装了 Python 3.8 及以上版本
 $ python --version
-Python 3.10.6
+Python 3.8.13
 
-# Clone this repo
+# 拉取仓库
 $ git clone https://github.com/zyddnys/manga-image-translator.git
 
-# Create venv
-$ python -m venv venv
-
-# Activate venv
-$ source venv/bin/activate
-
-# For --use-gpu option go to https://pytorch.org/ and follow
-# pytorch installation instructions. Add `--upgrade --force-reinstall`
-# to the pip command to overwrite the currently installed pytorch version.
-
-# Install the dependencies
+# 安装依赖
 $ pip install -r requirements.txt
 
 $ pip install git+https://github.com/kodalli/pydensecrf.git
 ```
 
-### Poetry
+注意：`pydensecrf` 并没有作为一个依赖列出，如果你的机器没有安装过，就需要手动安装一下。\
+如果你在使用 Windows，可以尝试在 <https://www.lfd.uci.edu/~gohlke/pythonlibs/#_pydensecrf> (英文) (`pip install https://www.lfd.uci.edu/~gohlke/pythonlibs/#_pydensecrf`)
+找一个对应 Python 版本的预编译包，并使用 `pip` 安装。\
+如果你在使用其它操作系统，可以尝试使用 `pip install git+https://github.com/kodalli/pydensecrf.git` 安装。
 
-```bash
-git clone https://github.com/zyddnys/manga-image-translator.git
-cd manga-image-translator
-poetry shell
-poetry install
+[使用谷歌翻译时可选]\
+申请有道翻译或者 DeepL 的 API，把你的 `APP_KEY` 和 `APP_SECRET` 或 `AUTH_KEY` 写入 `translators/key.py` 中。
+
+### 翻译器列表
+
+| 名称            | 是否需要 API Key | 是否离线可用 | 其他说明                                    |
+| -------------- | ------- | ------- | ----------------------------------------------------- |
+| google         |         |         |                                                       |
+| youdao         | ✔️      |         | 需要 `YOUDAO_APP_KEY` 和 `YOUDAO_SECRET_KEY`     |
+| baidu          | ✔️      |         | 需要 `BAIDU_APP_ID` 和 `BAIDU_SECRET_KEY`        |
+| deepl          | ✔️      |         | 需要 `DEEPL_AUTH_KEY`                             |
+| caiyun          | ✔️      |         | 需要 `CAIYUN_TOKEN`                             |
+| gpt3           | ✔️      |         | Implements text-davinci-003. Requires `OPENAI_API_KEY`|
+| gpt3.5         | ✔️      |         | Implements gpt-3.5-turbo. Requires `OPENAI_API_KEY`   |
+| gpt4           | ✔️      |         | Implements gpt-4. Requires `OPENAI_API_KEY`           |
+| papago         |         |         |                                                       |
+| offline        |         | ✔️      |  自动选择可用的离线模型，只是选择器                                                  |
+| sugoi          |         | ✔️      |  只能翻译英文                                                    |
+| m2m100         |         | ✔️      |  可以翻译所有语言                                                     |
+| m2m100_big     |         | ✔️      |  带big的是完整尺寸，不带是精简版                                                    |
+| none           |         | ✔️      | 翻译成空白文本                                          |
+| original       |         | ✔️      | 翻译成源文本                                            |
+
+### 语言代码列表
+
+可以填入 `--target-lang` 参数
+
+```yaml
+CHS: Chinese (Simplified)
+CHT: Chinese (Traditional)
+CSY: Czech
+NLD: Dutch
+ENG: English
+FRA: French
+DEU: German
+HUN: Hungarian
+ITA: Italian
+JPN: Japanese
+KOR: Korean
+PLK: Polish
+PTB: Portuguese (Brazil)
+ROM: Romanian
+RUS: Russian
+ESP: Spanish
+TRK: Turkish
+VIN: Vietnames
+ARA: Arabic
+SRP: Serbian
+HRV: Croatian
+THA: Thai
+IND: Indonesian
 ```
-
-The models will be downloaded into `./models` at runtime.
-
-#### Additional instructions for **Windows**
-
-Before you start the pip install, first install Microsoft C++ Build
-Tools ([Download](https://visualstudio.microsoft.com/vs/),
-[Instructions](https://stackoverflow.com/questions/40504552/how-to-install-visual-c-build-tools))
-as some pip dependencies will not compile without it.
-(See [#114](https://github.com/zyddnys/manga-image-translator/issues/114)).
-
-To use [cuda](https://developer.nvidia.com/cuda-downloads?target_os=Windows&target_arch=x86_64)
-on windows install the correct pytorch version as instructed on <https://pytorch.org/>.
-
-Also, if you have trouble installing pydensecrf with the command above you can install the pre-compiled wheels
-with `pip install https://www.lfd.uci.edu/~gohlke/pythonlibs/#_pydensecrf`.
-
-### Docker
-
-Requirements:
-
-- Docker (version 19.03+ required for CUDA / GPU acceleration)
-- Docker Compose (Optional if you want to use files in the `demo/doc` folder)
-- Nvidia Container Runtime (Optional if you want to use CUDA)
-
-This project has docker support under `zyddnys/manga-image-translator:main` image.
-This docker image contains all required dependencies / models for the project.
-It should be noted that this image is fairly large (~ 15GB).
-
-#### Hosting the web server
-
-The web server can be hosted using (For CPU)
-
-```bash
-docker run -p 5003:5003 -v result:/app/result --ipc=host --rm zyddnys/manga-image-translator:main -l ENG --manga2eng -v --mode web --host=0.0.0.0 --port=5003
-```
-
-or
-
-```bash
-docker-compose -f demo/doc/docker-compose-web-with-cpu.yml up
-```
-
-depending on which you prefer. The web server should start on port [5003](http://localhost:5003)
-and images should become in the `/result` folder.
-
-#### Using as CLI
-
-To use docker with the CLI (I.e in batch mode)
-
-```bash
-docker run -v <targetFolder>:/app/<targetFolder> -v <targetFolder>-translated:/app/<targetFolder>-translated  --ipc=host --rm zyddnys/manga-image-translator:main --mode=batch -i=/app/<targetFolder> <cli flags>
-```
-
-**Note:** In the event you need to reference files on your host machine
-you will need to mount the associated files as volumes into the `/app` folder inside the container.
-Paths for the CLI will need to be the internal docker path `/app/...` instead of the paths on your host machine
-
-#### Setting Translation Secrets
-
-Some translation services require API keys to function to set these pass them as env vars into the docker container. For
-example:
-
-```bash
-docker run --env="DEEPL_AUTH_KEY=xxx" --ipc=host --rm zyddnys/manga-image-translator:main <cli flags>
-```
-
-#### Using with Nvidia GPU
-
-> To use with a supported GPU please first read the initial `Docker` section. There are some special dependencies you
-> will need to use
-
-To run the container with the following flags set:
-
-```bash
-docker run ... --gpus=all ... zyddnys/manga-image-translator:main ... --use-gpu
-```
-
-Or (For the web server + GPU)
-
-```bash
-docker-compose -f demo/doc/docker-compose-web-with-gpu.yml up
-```
-
-#### Building locally
-
-To build the docker image locally you can run (You will require make on your machine)
-
-```bash
-make build-image
-```
-
-Then to test the built image run
-
-```bash
-make run-web-server
-```
-
-## Usage
-
-### Batch mode (default)
-
-```bash
-# use `--use-gpu` for speedup if you have a compatible NVIDIA GPU.
-# use `--target-lang <language_code>` to specify a target language.
-# use `--inpainter=none` to disable inpainting.
-# use `--translator=none` if you only want to use inpainting (blank bubbles)
-# replace <path> with the path to the image folder or file.
-$ python -m manga_translator -v --translator=google -l ENG -i <path>
-# results can be found under `<path_to_image_folder>-translated`.
-```
-
-### Demo mode
-
-```bash
-# saves singular image into /result folder for demonstration purposes
-# use `--mode demo` to enable demo translation.
-# replace <path> with the path to the image file.
-$ python -m manga_translator --mode demo -v --translator=google -l ENG -i <path>
-# result can be found in `result/`.
-```
-
-### Web Mode
-
-```bash
-# use `--mode web` to start a web server.
-$ python -m manga_translator -v --mode web --use-gpu
-# the demo will be serving on http://127.0.0.1:5003
-```
-
-### Api Mode
-
-```bash
-# use `--mode web` to start a web server.
-$ python -m manga_translator -v --mode api --use-gpu
-# the demo will be serving on http://127.0.0.1:5003
-```
-## Related Projects
-GUI implementation: [BallonsTranslator](https://github.com/dmMaze/BallonsTranslator)
-
-## Docs
-
-### Recommended Modules
-Detector:
-- ENG: ??
-- JPN: ??
-- CHS: ??
-- KOR: ??
-- Using `--detector ctd` can increase the amount of text lines detected
-
-
-OCR:
-- ENG: ??
-- JPN: ??
-- CHS: ??
-- KOR: 48px
-
-Translator:
-- JPN -> ENG: **Sugoi**
-- CHS -> ENG: ??
-- CHS -> JPN: ??
-- JPN -> CHS: ??
-- ENG -> JPN: ??
-- ENG -> CHS: ??
-
-Inpainter: ??
-
-Colorizer: **mc2**
 
 <!-- Auto generated start (See devscripts/make_readme.py) -->
-
-#### Tips to improve translation quality
-
-- Small resolutions can sometimes trip up the detector, which is not so good at picking up irregular text sizes. To
-  circumvent this you can use an upscaler by specifying `--upscale-ratio 2` or any other value
-- If the text being rendered is too small to read specify `--font-size-minimum 30` for instance or use the `--manga2eng`
-  renderer that will try to adapt to detected textbubbles
-- Specify a font with `--font-path fonts/anime_ace_3.ttf` for example
-
-### Options
+## 选项
 
 ```text
 -h, --help                                   show this help message and exit
@@ -375,7 +148,7 @@ Colorizer: **mc2**
 --overwrite                                  Overwrite already translated images in batch mode.
 --skip-no-text                               Skip image without text (Will not be saved).
 --model-dir MODEL_DIR                        Model directory (by default ./models in project root)
---use-gou                                   Turn on/off gpu
+--use-gpu                                   Turn on/off gpu (automatic selection between mps or cuda)
 --use-gpu-limited                           Turn on/off gpu (excluding offline translator)
 --detector {default,ctd,craft,none}          Text detector used for creating a text mask from an
                                              image, DO NOT use craft for manga, it's not designed
@@ -476,230 +249,63 @@ Colorizer: **mc2**
 
 <!-- Auto generated end -->
 
-### Language Code Reference
-
-Used by the `--target-lang` or `-l` argument.
-
-```yaml
-CHS: Chinese (Simplified)
-CHT: Chinese (Traditional)
-CSY: Czech
-NLD: Dutch
-ENG: English
-FRA: French
-DEU: German
-HUN: Hungarian
-ITA: Italian
-JPN: Japanese
-KOR: Korean
-PLK: Polish
-PTB: Portuguese (Brazil)
-ROM: Romanian
-RUS: Russian
-ESP: Spanish
-TRK: Turkish
-UKR: Ukrainian
-VIN: Vietnames
-ARA: Arabic
-SRP: Serbian
-HRV: Croatian
-THA: Thai
-IND: Indonesian
-```
-
-### Translators Reference
-
-| Name       | API Key | Offline | Note                                                   |
-|------------|---------|---------|--------------------------------------------------------|
-| google     |         |         |                                                        |
-| youdao     | ✔️      |         | Requires `YOUDAO_APP_KEY` and `YOUDAO_SECRET_KEY`      |
-| baidu      | ✔️      |         | Requires `BAIDU_APP_ID` and `BAIDU_SECRET_KEY`         |
-| deepl      | ✔️      |         | Requires `DEEPL_AUTH_KEY`                              |
-| caiyun     | ✔️      |         | Requires `CAIYUN_TOKEN`                                |
-| gpt3       | ✔️      |         | Implements text-davinci-003. Requires `OPENAI_API_KEY` |
-| gpt3.5     | ✔️      |         | Implements gpt-3.5-turbo. Requires `OPENAI_API_KEY`    |
-| gpt4       | ✔️      |         | Implements gpt-4. Requires `OPENAI_API_KEY`            |
-| papago     |         |         |                                                        |
-| offline    |         | ✔️      | Chooses most suitable offline translator for language  |
-| sugoi      |         | ✔️      | Sugoi V4.0 Models                                      |
-| m2m100     |         | ✔️      | Supports every language                                |
-| m2m100_big |         | ✔️      |                                                        |
-| none       |         | ✔️      | Translate to empty texts                               |
-| original   |         | ✔️      | Keep original texts                                    |
-
-- API Key: Whether the translator requires an API key to be set as environment variable.
-  For this you can create a .env file in the project root directory containing your api keys like so:
-
-```env
-OPENAI_API_KEY=sk-xxxxxxx...
-DEEPL_AUTH_KEY=xxxxxxxx...
-```
-
-- Offline: Whether the translator can be used offline.
-
-- Sugoi is created by mingshiba, please support him in https://www.patreon.com/mingshiba
-
-### GPT Config Reference
-
-Used by the `--gpt-config` argument.
-
-```yaml
-# The prompt being feed into GPT before the text to translate.
-# Use {to_lang} to indicate where the target language name should be inserted.
-# Note: ChatGPT models don't use this prompt.
-prompt_template: >
-  Please help me to translate the following text from a manga to {to_lang}
-  (if it's already in {to_lang} or looks like gibberish you have to output it as it is instead):\n
-
-# What sampling temperature to use, between 0 and 2.
-# Higher values like 0.8 will make the output more random,
-# while lower values like 0.2 will make it more focused and deterministic.
-temperature: 0.5
-
-# An alternative to sampling with temperature, called nucleus sampling,
-# where the model considers the results of the tokens with top_p probability mass.
-# So 0.1 means only the tokens comprising the top 10% probability mass are considered.
-top_p: 1
-
-# The prompt being feed into ChatGPT before the text to translate.
-# Use {to_lang} to indicate where the target language name should be inserted.
-# Tokens used in this example: 57+
-chat_system_template: >
-  You are a professional translation engine, 
-  please translate the story into a colloquial, 
-  elegant and fluent content, 
-  without referencing machine translations. 
-  You must only translate the story, never interpret it.
-  If there is any issue in the text, output it as is.
-
-  Translate to {to_lang}.
-
-# Samples being feed into ChatGPT to show an example conversation.
-# In a [prompt, response] format, keyed by the target language name.
-#
-# Generally, samples should include some examples of translation preferences, and ideally
-# some names of characters it's likely to encounter.
-#
-# If you'd like to disable this feature, just set this to an empty list.
-chat_sample:
-  Simplified Chinese: # Tokens used in this example: 88 + 84
-    - <|1|>恥ずかしい… 目立ちたくない… 私が消えたい…
-      <|2|>きみ… 大丈夫⁉
-      <|3|>なんだこいつ 空気読めて ないのか…？
-    - <|1|>好尴尬…我不想引人注目…我想消失…
-      <|2|>你…没事吧⁉
-      <|3|>这家伙怎么看不懂气氛的…？
-
-# Overwrite configs for a specific model.
-# For now the list is: gpt3, gpt35, gpt4
-gpt35:
-  temperature: 0.3
-```
-
-### Using Gimp for rendering
-
-When setting output format to {`xcf`, `psd`, `pdf`} Gimp will be used to generate the file.
-
-On Windows this assumes Gimp 2.x to be installed to `C:\Users\<Username>\AppData\Local\Programs\Gimp 2`.
-
-The resulting `.xcf` file contains the original image as the lowest layer and it has the inpainting as a separate layer.
-The translated textboxes have their own layers with the original text as the layer name for easy access.
-
-Limitations:
-
-- Gimp will turn text layers to regular images when saving `.psd` files.
-- Rotated text isn't handled well in Gimp. When editing a rotated textbox it'll also show a popup that it was modified
-  by an outside program.
-- Font family is controlled separately, with the `--gimp-font` argument.
-
-### Api Documentation
-
-<details closed>
-<summary>API V2</summary>
-<br>
+### 使用命令行执行
 
 ```bash
-# use `--mode api` to start a web server.
-$ python -m manga_translator -v --mode api --use-gpu
-# the api will be serving on http://127.0.0.1:5003
+# 如果机器有支持 CUDA 的 NVIDIA GPU，可以添加 `--use-gpu` 参数
+# 使用 `--use-gpu-limited` 将需要使用大量显存的翻译交由CPU执行，这样可以减少显存占用
+# 使用 `--translator=<翻译器名称>` 来指定翻译器
+# 使用 `--target-lang=<语言代码>` 来指定目标语言
+# 将 <图片文件路径> 替换为图片的路径
+# 如果你要翻译的图片比较小或者模糊，可以使用upscaler提升图像大小与质量，从而提升检测翻译效果
+$ python -m manga_translator --verbose --use-gpu --translator=google --target-lang=CHS -i <path_to_image_file>
+# 结果会存放到 result 文件夹里
 ```
 
-Api is accepting json(post) and multipart.
-<br>
-Api endpoints are `/colorize_translate`, `/inpaint_translate`, `/translate`, `/get_text`.
-<br>
-Valid arguments for the api are:
+#### 使用命令行批量翻译
 
-```
-// These are taken from args.py. For more info see README.md
-detector: String
-ocr: String
-inpainter: String
-upscaler: String
-translator: String 
-target_language: String
-upscale_ratio: Integer
-translator_chain: String
-selective_translation: String
-attempts: Integer
-detection_size: Integer // 1024 => 'S', 1536 => 'M', 2048 => 'L', 2560 => 'X'
-text_threshold: Float
-box_threshold: Float
-unclip_ratio: Float
-inpainting_size: Integer
-det_rotate: Bool
-det_auto_rotate: Bool
-det_invert: Bool
-det_gamma_correct: Bool
-min_text_length: Integer
-colorization_size: Integer
-denoise_sigma: Integer
-mask_dilation_offset: Integer
-ignore_bubble: Integer
-gpt_config: String
-filter_text: String
-overlay_type: String
-
-// These are api specific args
-direction: String // {'auto', 'h', 'v'}
-base64Images: String //Image in base64 format
-image: Multipart // image upload from multipart
-url: String // an url string
+```bash
+# 其它参数如上
+# 使用 `--mode batch` 开启批量翻译模式
+# 将 <图片文件夹路径> 替换为图片文件夹的路径
+$ python -m manga_translator --verbose --mode batch --use-gpu --translator=google --target-lang=CHS -i <图片文件夹路径>
+# 结果会存放到 `<图片文件夹路径>-translated` 文件夹里
 ```
 
-</details>
+### 使用浏览器 (Web 服务器)
 
-Manual translation replaces machine translation with human translators.
-Basic manual translation demo can be found at <http://127.0.0.1:5003/manual> when using web mode.
-<details closed>
-<summary>API</summary>
-<br>
+```bash
+# 其它参数如上
+# 使用 `--mode web` 开启 Web 服务器模式
+$ python -m manga_translator --verbose --mode web --use-gpu
+# 程序服务会开启在 http://127.0.0.1:5003
+```
 
-Two modes of translation service are provided by the demo: synchronous mode and asynchronous mode.\
-In synchronous mode your HTTP POST request will finish once the translation task is finished.\
-In asynchronous mode your HTTP POST request will respond with a `task_id` immediately, you can use this `task_id` to
-poll for translation task state.
+程序提供两个请求模式：同步模式和异步模式。\
+同步模式下你的 HTTP POST 请求会一直等待直到翻译完成。\
+异步模式下你的 HTTP POST 会立刻返回一个 `task_id`，你可以使用这个 `task_id` 去定期轮询得到翻译的状态。
 
-#### Synchronous mode
+#### 同步模式
 
-1. POST a form request with form data `file:<content-of-image>` to <http://127.0.0.1:5003/run>
-2. Wait for response
-3. Use the resultant `task_id` to find translation result in `result/` directory, e.g. using Nginx to expose `result/`
+1. POST 提交一个带图片，名字是 file 的 form 到 <http://127.0.0.1:5003/run>
+2. 等待返回
+3. 从得到的 `task_id` 去 result 文件夹里取结果，例如通过 Nginx 暴露 result 下的内容
 
-#### Asynchronous mode
+#### 异步模式
 
-1. POST a form request with form data `file:<content-of-image>` to <http://127.0.0.1:5003/submit>
-2. Acquire translation `task_id`
-3. Poll for translation task state by posting JSON `{"taskid": <task-id>}` to <http://127.0.0.1:5003/task-state>
-4. Translation is finished when the resultant state is either `finished`, `error` or `error-lang`
-5. Find translation result in `result/` directory, e.g. using Nginx to expose `result/`
+1. POST 提交一个带图片，名字是 file 的 form 到<http://127.0.0.1:5003/submit>
+2. 你会得到一个 `task_id`
+3. 通过这个 `task_id` 你可以定期发送 POST 轮询请求 JSON `{"taskid": <task_id>}` 到 <http://127.0.0.1:5003/task-state>
+4. 当返回的状态是 `finished`、`error` 或 `error-lang` 时代表翻译完成
+5. 去 result 文件夹里取结果，例如通过 Nginx 暴露 result 下的内容
 
-#### Manual translation
+#### 人工翻译
 
-POST a form request with form data `file:<content-of-image>` to <http://127.0.0.1:5003/manual-translate>
-and wait for response.
+人工翻译允许代替机翻手动填入翻译后文本
 
-You will obtain a JSON response like this:
+POST 提交一个带图片，名字是 file 的 form 到 <http://127.0.0.1:5003/manual-translate>，并等待返回
+
+你会得到一个 JSON 数组，例如：
 
 ```json
 {
@@ -714,7 +320,7 @@ You will obtain a JSON response like this:
 }
 ```
 
-Fill in translated texts:
+将翻译后内容填入 t 字符串：
 
 ```json
 {
@@ -723,45 +329,106 @@ Fill in translated texts:
   "trans_result": [
     {
       "s": "☆上司来ちゃった……",
-      "t": "☆Boss is here..."
+      "t": "☆上司来了..."
     }
   ]
 }
 ```
 
-Post translated JSON to <http://127.0.0.1:5003/post-manual-result> and wait for response.\
-Then you can find the translation result in `result/` directory, e.g. using Nginx to expose `result/`.
+将该 JSON 发送到 <http://127.0.0.1:5003/post-manual-result>，并等待返回\
+之后就可以从得到的 `task_id` 去 result 文件夹里取结果，例如通过 Nginx 暴露 result 下的内容
 
-</details>
+## 下一步
 
-## Next steps
+列一下以后完善这个项目需要做的事，欢迎贡献！
 
-A list of what needs to be done next, you're welcome to contribute.
+1. 使用基于扩散模型的图像修补算法，不过这样图像修补会慢很多
+2. ~~【重要，请求帮助】目前的文字渲染引擎只能勉强看，和 Adobe 的渲染引擎差距明显，我们需要您的帮助完善文本渲染！~~
+3. ~~我尝试了在 OCR 模型里提取文字颜色，均以失败告终，现在只能用 DPGMM 凑活提取文字颜色，但是效果欠佳，我会尽量完善文字颜色提取，如果您有好的建议请尽管提 issue~~
+4. ~~文本检测目前不能很好处理英语和韩语，等图片修补模型训练好了我就会训练新版的文字检测模型。~~ ~~韩语支持在做了~~
+5. 文本渲染区域是根据检测到的文本，而不是汽包决定的，这样可以处理没有汽包的图片但是不能很好进行英语嵌字，目前没有想到好的解决方案。
+6. [Ryota et al.](https://arxiv.org/abs/2012.14271) 提出了获取配对漫画作为训练数据，训练可以结合图片内容进行翻译的模型，未来可以考虑把大量图片 VQVAE 化，输入 nmt 的 encoder 辅助翻译，而不是分框提取 tag 辅助翻译，这样可以处理范围更广的图片。这需要我们也获取大量配对翻译漫画/图片数据，以及训练 VQVAE 模型。
+7. 求闻转译志针对视频设计，未来这个项目要能优化到可以处理视频，提取文本颜色用于生成 ass 字幕，进一步辅助东方视频字幕组工作。甚至可以涂改视频内容，去掉视频内字幕。
+8. ~~结合传统算法的 mask 生成优化，目前在测试 CRF 相关算法。~~
+9. ~~尚不支持倾斜文本区域合并~~
 
-1. Use diffusion model based inpainting to achieve near perfect result, but this could be much slower.
-2. ~~**IMPORTANT!!!HELP NEEDED!!!** The current text rendering engine is barely usable, we need your help to improve
-   text rendering!~~
-3. Text rendering area is determined by detected text lines, not speech bubbles.\
-   This works for images without speech bubbles, but making it impossible to decide where to put translated English
-   text. I have no idea how to solve this.
-4. [Ryota et al.](https://arxiv.org/abs/2012.14271) proposed using multimodal machine translation, maybe we can add ViT
-   features for building custom NMT models.
-5. Make this project works for video(rewrite code in C++ and use GPU/other hardware NN accelerator).\
-   Used for detecting hard subtitles in videos, generating ass file and remove them completely.
-6. ~~Mask refinement based using non deep learning algorithms, I am currently testing out CRF based algorithm.~~
-7. ~~Angled text region merge is not currently supported~~
-8. Create pip repository
+## 效果图
 
-## Support Us
+以下样例可能并未经常更新，可能不能代表当前主分支版本的效果。
 
-GPU server is not cheap, please consider to donate to us.
-
-- Ko-fi: <https://ko-fi.com/voilelabs>
-- Patreon: <https://www.patreon.com/voilelabs>
-- 爱发电: <https://afdian.net/@voilelabs>
-
-  ### Thanks To All Our Contributors :
-  <a href="https://github.com/zyddnys/manga-image-translator/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=zyddnys/manga-image-translator" />
-
-</a>
+<table>
+  <thead>
+    <tr>
+      <th align="center" width="50%">原始图片</th>
+      <th align="center" width="50%">翻译后图片</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" width="50%">
+        <a href="https://user-images.githubusercontent.com/31543482/232265329-6a560438-e887-4f7f-b6a1-a61b8648f781.png">
+          <img alt="佐藤さんは知っていた - 猫麦" src="https://user-images.githubusercontent.com/31543482/232265329-6a560438-e887-4f7f-b6a1-a61b8648f781.png" />
+        </a>
+        <br />
+        <a href="https://twitter.com/09ra_19ra/status/1647079591109103617/photo/1">(Source @09ra_19ra)</a>
+      </td>
+      <td align="center" width="50%">
+        <a href="https://user-images.githubusercontent.com/31543482/232265339-514c843a-0541-4a24-b3bc-1efa6915f757.png">
+          <img alt="Output" src="https://user-images.githubusercontent.com/31543482/232265339-514c843a-0541-4a24-b3bc-1efa6915f757.png" />
+        </a>
+        <br />
+        <a href="https://user-images.githubusercontent.com/31543482/232265376-01a4557d-8120-4b6b-b062-f271df177770.png">(Mask)</a>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <a href="https://user-images.githubusercontent.com/31543482/232265479-a15c43b5-0f00-489c-9b04-5dfbcd48c432.png">
+          <img alt="Gris finds out she's of royal blood - VERTI" src="https://user-images.githubusercontent.com/31543482/232265479-a15c43b5-0f00-489c-9b04-5dfbcd48c432.png" />
+        </a>
+        <br />
+        <a href="https://twitter.com/VERTIGRIS_ART/status/1644365184142647300/photo/1">(Source @VERTIGRIS_ART)</a>
+      </td>
+      <td align="center" width="50%">
+        <a href="https://user-images.githubusercontent.com/31543482/232265480-f8ba7a28-846f-46e7-8041-3dcb1afe3f67.png">
+          <img alt="Output" src="https://user-images.githubusercontent.com/31543482/232265480-f8ba7a28-846f-46e7-8041-3dcb1afe3f67.png" />
+        </a>
+        <br />
+        <code>--detector ctd</code>
+        <a href="https://user-images.githubusercontent.com/31543482/232265483-99ad20af-dca8-4b78-90f9-a6599eb0e70b.png">(Mask)</a>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <a href="https://user-images.githubusercontent.com/31543482/232264684-5a7bcf8e-707b-4925-86b0-4212382f1680.png">
+          <img alt="陰キャお嬢様の新学期🏫📔🌸 (#3) - ひづき夜宵🎀💜" src="https://user-images.githubusercontent.com/31543482/232264684-5a7bcf8e-707b-4925-86b0-4212382f1680.png" />
+        </a>
+        <br />
+        <a href="https://twitter.com/hiduki_yayoi/status/1645186427712573440/photo/2">(Source @hiduki_yayoi)</a>
+      </td>
+      <td align="center" width="50%">
+        <a href="https://user-images.githubusercontent.com/31543482/232264644-39db36c8-a8d9-4009-823d-bf85ca0609bf.png">
+          <img alt="Output" src="https://user-images.githubusercontent.com/31543482/232264644-39db36c8-a8d9-4009-823d-bf85ca0609bf.png" />
+        </a>
+        <br />
+        <code>--translator none</code>
+        <a href="https://user-images.githubusercontent.com/31543482/232264671-bc8dd9d0-8675-4c6d-8f86-0d5b7a342233.png">(Mask)</a>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <a href="https://user-images.githubusercontent.com/31543482/232265794-5ea8a0cb-42fe-4438-80b7-3bf7eaf0ff2c.png">
+          <img alt="幼なじみの高校デビューの癖がすごい (#1) - 神吉李花☪️🐧" src="https://user-images.githubusercontent.com/31543482/232265794-5ea8a0cb-42fe-4438-80b7-3bf7eaf0ff2c.png" />
+        </a>
+        <br />
+        <a href="https://twitter.com/rikak/status/1642727617886556160/photo/1">(Source @rikak)</a>
+      </td>
+      <td align="center" width="50%">
+        <a href="https://user-images.githubusercontent.com/31543482/232265795-4bc47589-fd97-4073-8cf4-82ae216a88bc.png">
+          <img alt="Output" src="https://user-images.githubusercontent.com/31543482/232265795-4bc47589-fd97-4073-8cf4-82ae216a88bc.png" />
+        </a>
+        <br />
+        <a href="https://user-images.githubusercontent.com/31543482/232265800-6bdc7973-41fe-4d7e-a554-98ea7ca7a137.png">(Mask)</a>
+      </td>
+    </tr>
+  </tbody>
+</table>

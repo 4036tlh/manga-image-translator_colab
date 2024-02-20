@@ -14,6 +14,8 @@ from .m2m100 import M2M100Translator, M2M100BigTranslator
 from .selective import SelectiveOfflineTranslator, prepare as prepare_selective_translator
 from .none import NoneTranslator
 from .original import OriginalTranslator
+from .sakura import SakuraTranslator
+from .sakura_server import SakuraServerTranslator
 
 OFFLINE_TRANSLATORS = {
     'offline': SelectiveOfflineTranslator,
@@ -24,6 +26,8 @@ OFFLINE_TRANSLATORS = {
     'jparacrawl_big': JparacrawlBigTranslator,
     'm2m100': M2M100Translator,
     'm2m100_big': M2M100BigTranslator,
+    'sakura': SakuraTranslator,
+    'sakura_server': SakuraServerTranslator,
 }
 
 TRANSLATORS = {
