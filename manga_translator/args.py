@@ -177,6 +177,7 @@ parser.add_argument('--kernel-size', default=3, type=int, help='Set the convolut
 
 # Self add
 parser.add_argument('--load-external-result', action='store_false', help='load text into image.')
+parser.add_argument('--export-save-json', action='store_false', help='extract text into image.')
 
 
 # Generares dict with a default value for each argument
