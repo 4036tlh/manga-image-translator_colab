@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import io
+import json
 
 import cv2
 from aiohttp.web_middlewares import middleware
@@ -218,6 +219,19 @@ class MangaTranslator():
         return False
 
     async def _translate_file(self, path: str, dest: str, ctx: Context):
+
+        if ctx.save_text_file:
+            if not os.path.isdir(ctx.save_text_file):
+              os.mkdir(target_dir)
+            if ctx.export_save_json:
+                target_dir = ctx.save_text_file + 'extracted_data/'
+                if not os.path.isdir(target_dir):
+                  os.mkdir(target_dir)
+                
+                target_dir = ctx.save_text_file + 'masked_img/'
+                if not os.path.isdir(target_dir):
+                  os.mkdir(target_dir)
+            
         if path.endswith('.txt'):
             with open(path, 'r') as f:
                 queries = f.read().split('\n')
@@ -254,7 +268,7 @@ class MangaTranslator():
                 logger.info(f'Saving "{dest}"')
                 save_result(result, dest, ctx)
                 await self._report_progress('saved', True)
-
+ 
                 if ctx.save_text or ctx.save_text_file or ctx.prep_manual:
                     if ctx.prep_manual:
                         # Save original image next to translated
@@ -263,6 +277,9 @@ class MangaTranslator():
                         img_path = os.path.join(os.path.dirname(dest), img_filename)
                         img.save(img_path, quality=ctx.save_quality)
                     if ctx.text_regions:
+                        if ctx.export_save_json:
+                            self._save_json_to_file(path, ctx)        
+                        else:
                         self._save_text_to_file(path, ctx)
                 return True
         return False
@@ -440,6 +457,12 @@ class MangaTranslator():
         if self.verbose:
             cv2.imwrite(self._result_path('inpainted.png'), cv2.cvtColor(ctx.img_inpainted, cv2.COLOR_RGB2BGR))
 
+        # -- own add 
+        # save result to file for further translating
+        with open(my_pos_dest,'a') as f1, open(my_text_dest,'a') as f2:
+            f1.write(f"{}\n")
+            f2.write(f"{}\n")
+        
         # -- Rendering
         await self._report_progress('rendering')
         ctx.img_rendered = await self._run_text_rendering(ctx)
@@ -629,10 +652,45 @@ class MangaTranslator():
         text_output_file = ctx.text_output_file
         if not text_output_file:
             text_output_file = os.path.splitext(image_path)[0] + '_translations.txt'
-
         with open(text_output_file, 'a', encoding='utf-8') as f:
             f.write(s)
 
+    def _save_json_to_file(self, image_path: str, ctx: Context):
+        cached_colors = []
+
+        def identify_colors(fg_rgb: List[int]):
+            idx = 0
+            for rgb, _ in cached_colors:
+                # If similar color already saved
+                if abs(rgb[0] - fg_rgb[0]) + abs(rgb[1] - fg_rgb[1]) + abs(rgb[2] - fg_rgb[2]) < 50:
+                    break
+                else:
+                    idx += 1
+            else:
+                cached_colors.append((fg_rgb, get_color_name(fg_rgb)))
+            return idx + 1, cached_colors[idx][1]
+
+        s = f'\n[{image_path}]\n'
+
+        extracted_datas = '{}'
+        extracted_datas = json.loads(extracted_datas)
+        for idx, region in enumerate(ctx.text_regions):
+            fore, back = region.get_font_colors()
+            
+            extracted_data = {
+                "fg": rgb2hex(*fore),
+                "bg": rgb2hex(*back),
+                "text": region.text,
+                "trans": "",
+                "coords": region.lines
+            }
+            extracted_datas[idx] = extracted_data
+
+        target_output_path = ctx.save_text_file  + 'extracted_data/' + os.path.splitext(image_path)[0].split('/')[-1] + '_extracted.json'
+        # Serializing json
+        with open(target_output_path, "w") as outfile:
+            json.dump(extracted_datas, outfile)
+            
 
 class MangaTranslatorWeb(MangaTranslator):
     """
