@@ -222,7 +222,7 @@ class MangaTranslator():
 
         if ctx.save_text_file:
             if not os.path.isdir(ctx.save_text_file):
-              os.mkdir(target_dir)
+              os.mkdir(str(ctx.save_text_file))
             if ctx.export_save_json:
                 target_dir = ctx.save_text_file + 'extracted_data/'
                 if not os.path.isdir(target_dir):
@@ -280,7 +280,7 @@ class MangaTranslator():
                         if ctx.export_save_json:
                             self._save_json_to_file(path, ctx)        
                         else:
-                        self._save_text_to_file(path, ctx)
+                            self._save_text_to_file(path, ctx)
                 return True
         return False
 
@@ -457,12 +457,6 @@ class MangaTranslator():
         if self.verbose:
             cv2.imwrite(self._result_path('inpainted.png'), cv2.cvtColor(ctx.img_inpainted, cv2.COLOR_RGB2BGR))
 
-        # -- own add 
-        # save result to file for further translating
-        with open(my_pos_dest,'a') as f1, open(my_text_dest,'a') as f2:
-            f1.write(f"{}\n")
-            f2.write(f"{}\n")
-        
         # -- Rendering
         await self._report_progress('rendering')
         ctx.img_rendered = await self._run_text_rendering(ctx)
@@ -672,8 +666,8 @@ class MangaTranslator():
 
         s = f'\n[{image_path}]\n'
 
-        extracted_datas = '{}'
-        extracted_datas = json.loads(extracted_datas)
+                extracted_datas = {}
+        #extracted_datas = json.loads(extracted_datas)
         for idx, region in enumerate(ctx.text_regions):
             fore, back = region.get_font_colors()
             
@@ -682,14 +676,14 @@ class MangaTranslator():
                 "bg": rgb2hex(*back),
                 "text": region.text,
                 "trans": "",
-                "coords": region.lines
+                "coords": region.lines.tolist()
             }
             extracted_datas[idx] = extracted_data
 
         target_output_path = ctx.save_text_file  + 'extracted_data/' + os.path.splitext(image_path)[0].split('/')[-1] + '_extracted.json'
         # Serializing json
-        with open(target_output_path, "w") as outfile:
-            json.dump(extracted_datas, outfile)
+        with open(target_output_path, "w", encoding='utf-8') as outfile:
+            json.dump(extracted_datas, outfile, ensure_ascii=False)
             
 
 class MangaTranslatorWeb(MangaTranslator):
