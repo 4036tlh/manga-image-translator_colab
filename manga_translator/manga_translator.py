@@ -666,7 +666,7 @@ class MangaTranslator():
 
         s = f'\n[{image_path}]\n'
 
-                extracted_datas = {}
+        extracted_datas = {}
         #extracted_datas = json.loads(extracted_datas)
         for idx, region in enumerate(ctx.text_regions):
             fore, back = region.get_font_colors()
@@ -675,7 +675,7 @@ class MangaTranslator():
                 "fg": rgb2hex(*fore),
                 "bg": rgb2hex(*back),
                 "text": region.text,
-                "trans": "",
+                "trans": region.translation,
                 "coords": region.lines.tolist()
             }
             extracted_datas[idx] = extracted_data
@@ -684,7 +684,9 @@ class MangaTranslator():
         # Serializing json
         with open(target_output_path, "w", encoding='utf-8') as outfile:
             json.dump(extracted_datas, outfile, ensure_ascii=False)
-            
+        
+        target_output_path = ctx.save_text_file  + 'masked_img/' + os.path.splitext(image_path)[0].split('/')[-1] + '_mask.jpg'
+        cv2.imwrite(target_output_path, ctx.mask_raw)    
 
 class MangaTranslatorWeb(MangaTranslator):
     """
