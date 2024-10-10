@@ -7,45 +7,44 @@ import string
 import time
 from lxml import html
 
-import argparse
-
 char_set = string.ascii_uppercase + string.digits
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-u", "--url", help = "jmanga.org url")
-parser.add_argument("-o", "--outputPath", help = "Output path")
-
-args = parser.parse_args()
-
-manga_url = args.outputPath
-image_url_base = 'https://mgojp.mangadb.shop/files'
 
 # fetch manga main page
-userAgentRandom = ''.join(random.sample(char_set*6, 6))
-manga_page_html = requests.get(manga_url, allow_redirects=True, headers = {'User-agent': userAgentRandom})
-manga_page_html = html.fromstring(manga_page_html.content)
+def step_1(manga_url):  
+  userAgentRandom = ''.join(random.sample(char_set*6, 6))
+  manga_page_html = requests.get(manga_url, allow_redirects=True, headers = {'User-agent': userAgentRandom})
+  manga_page_html = html.fromstring(manga_page_html.content)
+  
+  title        = manga_page_html.xpath('//h2[@class="manga-name"]/text()')
+  title_or     = manga_page_html.xpath('//div[@class="manga-name-or"]/text()')
+  description  = manga_page_html.xpath('//div[@class="description"]/text()')
+  tags         = manga_page_html.xpath('//div[@class="genres"]/a//text()')
+  ch_ids = manga_page_html.xpath('//ul[@id="ja-chaps"]/li/@data-id')
+  ch_names  = manga_page_html.xpath('//ul[@id="ja-chaps"]/li/@data-number')
 
-title        = manga_page_html.xpath('//h2[@class="manga-name"]/text()')
-title_or     = manga_page_html.xpath('//div[@class="manga-name-or"]/text()')
-description  = manga_page_html.xpath('//div[@class="description"]/text()')
-chapter_list = manga_page_html.xpath('//ul[@id="ja-chaps"]/li/@data-id')
-chapter_num  = manga_page_html.xpath('//ul[@id="ja-chaps"]/li/@data-number')
+return title, title_or, description, tags, ch_url_ids[::-1], ch_names[::-1]
 
 # fetch chapters' info
-manga_id = 'E'
-ch_pages_numbers = []
-ch_ids = []
-for idx, c in enumerate(chapter_list):
-  temp = f'https://jmanga.org/json/chapter?mode=vertical&id={c}'
+def step_2(ch_url_id):
+  
+  userAgentRandom = ''.join(random.sample(char_set*6, 6))
+  temp = f'https://jmanga.org/json/chapter?mode=vertical&id={ch_url_id}'
   temp = requests.get(temp, allow_redirects=True, headers = {'User-agent': userAgentRandom})
   temp = html.fromstring(temp.json()['html'])
   temp = temp.xpath('//img/@data-src')
 
-  ch_pages_numbers.append(len(temp))
-  ch_ids.append(temp[0].split('/')[-2])
+  ch_pages_number = len(temp)
+  ch_id = temp[0].split('/')[-2]
+  manga_id = temp[0].split('/')[-3]
+  img_ext = temp[0].split('.')[-1]
   
-  if idx == 0:   manga_id = temp[0].split('/')[-3]
+  return manga_id, ch_id, ch_pages_number, img_ext
 
-#image_url = f'{image_url_base}/{manga_id}/{chapter_list[0]}/{page_No}.webp'
+def download_image(img_url, tar_img_path):
+  os.makedirs(os.path.dirname(tar_img_path), exist_ok=True)
 
-return manga_id, title, title_or, description, manga_id, chapter_num, ch_ids, ch_pages_numbers
+  userAgentRandom = ''.join(random.sample(char_set*6, 6))
+  img_data = requests.get(url=img_url, headers={'User-agent': userAgentRandom}).content
+  with open(tar_img_path, 'wb', create_parents=True) as handler:
+      handler.write(img_data)
