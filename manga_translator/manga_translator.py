@@ -674,11 +674,16 @@ class MangaTranslator():
             extracted_data = {
                 "fg": rgb2hex(*fore),
                 "bg": rgb2hex(*back),
+                "font_family": region.font_family,
+                "italic": region.italic,
+                "rich_text": region.rich_text,
+                "bold": region.bold,
                 "text": region.text,
                 "trans": region.translation,
                 "coords": region.lines.tolist(),
-                "d":region.direction,
-                "prob":region.prob
+                "angle ": region.angle ,
+                "direction": region.direction,
+                "prob": region.prob
             }
             extracted_datas[idx] = extracted_data
 
