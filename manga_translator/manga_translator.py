@@ -681,7 +681,8 @@ class MangaTranslator():
                 "text": region.text,
                 "trans": region.translation,
                 "coords": region.lines.tolist(),
-                "angle ": region.angle ,
+                "angle": region.angle ,
+                "font_size": region.font_size,
                 "direction": region.direction,
                 "prob": region.prob
             }
