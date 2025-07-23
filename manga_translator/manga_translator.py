@@ -666,7 +666,8 @@ class MangaTranslator():
 
         s = f'\n[{image_path}]\n'
 
-        extracted_datas = {}
+        #extracted_datas = {}
+        extracted_datas = []
         #extracted_datas = json.loads(extracted_datas)
         for idx, region in enumerate(ctx.text_regions):
             fore, back = region.get_font_colors()
@@ -684,17 +685,22 @@ class MangaTranslator():
                 "angle": region.angle ,
                 "font_size": region.font_size,
                 "direction": region.direction,
-                "prob": region.prob
+                "prob": region.prob,
+                "status": 1,
             }
-            extracted_datas[idx] = extracted_data
+            #extracted_datas[idx] = extracted_data
+            extracted_datas.append(extracted_data)
 
         target_output_path = ctx.save_text_file  + 'extracted_data/' + os.path.splitext(image_path)[0].split('/')[-1] + '_extracted.json'
         # Serializing json
         with open(target_output_path, "w", encoding='utf-8') as outfile:
             json.dump(extracted_datas, outfile, ensure_ascii=False)
         
-        target_output_path = ctx.save_text_file  + 'masked_img/' + os.path.splitext(image_path)[0].split('/')[-1] + '_mask.jpg'
-        cv2.imwrite(target_output_path, ctx.mask_raw)    
+        target_output_path = ctx.save_text_file  + 'pure_mask_img/' + os.path.splitext(image_path)[0].split('/')[-1] + '_pure_mask.jpg'
+        cv2.imwrite(target_output_path, ctx.mask_raw)
+
+        target_output_path = ctx.save_text_file  + 'inpainted_mask/' + os.path.splitext(image_path)[0].split('/')[-1] + '_mask.jpg'
+        cv2.imwrite(target_output_path, ctx.gimp_mask)
 
 class MangaTranslatorWeb(MangaTranslator):
     """
