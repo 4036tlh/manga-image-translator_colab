@@ -667,7 +667,11 @@ class MangaTranslator():
         s = f'\n[{image_path}]\n'
 
         #extracted_datas = {}
-        extracted_datas = []
+        extracted_datas = {
+                            "url": '',
+                            "data": [],
+                          }
+
         #extracted_datas = json.loads(extracted_datas)
         for idx, region in enumerate(ctx.text_regions):
             fore, back = region.get_font_colors()
@@ -689,7 +693,7 @@ class MangaTranslator():
                 "status": 1,
             }
             #extracted_datas[idx] = extracted_data
-            extracted_datas.append(extracted_data)
+            extracted_datas["data"].append(extracted_data)
 
         target_output_path = ctx.save_text_file  + 'extracted_data/' + os.path.splitext(image_path)[0].split('/')[-1] + '_extracted.json'
         # Serializing json
@@ -697,10 +701,25 @@ class MangaTranslator():
             json.dump(extracted_datas, outfile, ensure_ascii=False)
         
         target_output_path = ctx.save_text_file  + 'pure_mask_img/' + os.path.splitext(image_path)[0].split('/')[-1] + '_pure_mask.jpg'
-        cv2.imwrite(target_output_path, ctx.mask_raw)
+        os.makedirs(ctx.save_text_file  + 'pure_mask_img/', exist_ok=True)
+        cv2.imwrite(target_output_path, ctx.mask)
 
-        target_output_path = ctx.save_text_file  + 'inpainted_mask/' + os.path.splitext(image_path)[0].split('/')[-1] + '_mask.jpg'
-        cv2.imwrite(target_output_path, ctx.gimp_mask)
+
+        normal_img = cv2.cvtColor(ctx.img_inpainted, cv2.COLOR_RGB2BGR)  # Ensure BGR format
+        mask = ctx.mask  # Assuming mask is (H,W) or (H,W,1)
+
+        # Ensure mask is single-channel and binary (0 or 255)
+        if len(mask.shape) == 3:
+            mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)  # Convert 3-channel mask to grayscale
+        _, binary_mask = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)  # Force binary
+
+        # Merge BGR image + mask into BGRA (transparency)
+        img_bgra = cv2.cvtColor(normal_img, cv2.COLOR_BGR2BGRA)  # Convert to BGRA first
+        img_bgra[:, :, 3] = binary_mask
+
+        target_output_path = ctx.save_text_file  + 'inpainted_mask/' + os.path.splitext(image_path)[0].split('/')[-1] + '_masked.png'
+        os.makedirs(ctx.save_text_file  + 'inpainted_mask/', exist_ok=True)
+        cv2.imwrite(target_output_path, img_bgra)
 
 class MangaTranslatorWeb(MangaTranslator):
     """
