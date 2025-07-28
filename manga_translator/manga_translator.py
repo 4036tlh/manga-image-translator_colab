@@ -666,12 +666,83 @@ class MangaTranslator():
 
         s = f'\n[{image_path}]\n'
 
+
+        
+        target_output_path = ctx.save_text_file  + 'pure_mask_img/' + os.path.splitext(image_path)[0].split('/')[-1] + '_pure_mask.jpg'
+        os.makedirs(ctx.save_text_file  + 'pure_mask_img/', exist_ok=True)
+        cv2.imwrite(target_output_path, ctx.mask)
+
+
+        ################## filter_pure_painted
+        def is_pure_color_region(img, coords, threshold=1):
+            # Create a mask for the polygon
+            mask = np.zeros(img.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(mask, [np.array(coords)], 255)
+            
+            # Get the mean and standard deviation of the masked region
+            mean, stddev = cv2.meanStdDev(img, mask=mask)
+            
+            # For color images, we check all channels
+            if len(stddev) > 1:
+                return all(s[0] < threshold for s in stddev)
+            else:
+                return stddev[0] < threshold
+
+        def filter_pure_painted(ctx):
+            img = ctx.gimp_mask
+
+            regions = []
+            for r in ctx.text_regions:
+                regions.append(r.lines.tolist()[0])
+            
+            same_color_result = []            
+            
+            # Convert to RGBA for transparency support
+            img_rgba = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
+                        
+            # Prepare both output images
+            labeled_img = img.copy()
+            non_pure_img = np.zeros((img.shape[0], img.shape[1], 4), dtype=np.uint8)  # RGBA with transparency
+            
+            # Process each region
+            for i, region in enumerate(regions):
+                region_np = np.array(region, dtype=np.int32)
+                is_pure = is_pure_color_region(img, region_np)
+                
+                if is_pure:
+                    same_color_result.append(1)
+                else:
+                    same_color_result.append(0)
+                    
+                    # Create mask for this region
+                    mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+                    cv2.fillPoly(mask, [region_np], 255)
+                    
+                    # Copy region to output with transparency
+                    for c in range(4):  # Copy all channels (RGBA)
+                        if c < 3:  # RGB channels
+                            non_pure_img[:, :, c] = np.where(mask==255, img[:, :, c], non_pure_img[:, :, c])
+                        else:  # Alpha channel
+                            non_pure_img[:, :, c] = np.where(mask==255, 255, non_pure_img[:, :, c])
+            
+            
+            return  non_pure_img, same_color_result
+
+                    
+        mask_inpaint_removeWhite , same_color_result = filter_pure_painted(ctx)
+
+        target_output_path = ctx.save_text_file  + 'inpainted_mask/' + os.path.splitext(image_path)[0].split('/')[-1] + '_masked.png'
+        os.makedirs(ctx.save_text_file  + 'inpainted_mask/', exist_ok=True)
+        cv2.imwrite(target_output_path, mask_inpaint_removeWhite)
+        
+        
+        
         #extracted_datas = {}
         extracted_datas = {
                             "url": '',
                             "data": [],
                           }
-
+                          
         #extracted_datas = json.loads(extracted_datas)
         for idx, region in enumerate(ctx.text_regions):
             fore, back = region.get_font_colors()
@@ -690,37 +761,17 @@ class MangaTranslator():
                 "font_size": region.font_size,
                 "direction": region.direction,
                 "prob": region.prob,
-                "status": 1,
+                "same_color": same_color_result[idx],
+                "valid": 1
             }
             #extracted_datas[idx] = extracted_data
             extracted_datas["data"].append(extracted_data)
-
+        
         target_output_path = ctx.save_text_file  + 'extracted_data/' + os.path.splitext(image_path)[0].split('/')[-1] + '_extracted.json'
         # Serializing json
         with open(target_output_path, "w", encoding='utf-8') as outfile:
             json.dump(extracted_datas, outfile, ensure_ascii=False)
         
-        target_output_path = ctx.save_text_file  + 'pure_mask_img/' + os.path.splitext(image_path)[0].split('/')[-1] + '_pure_mask.jpg'
-        os.makedirs(ctx.save_text_file  + 'pure_mask_img/', exist_ok=True)
-        cv2.imwrite(target_output_path, ctx.mask)
-
-
-        normal_img = cv2.cvtColor(ctx.img_inpainted, cv2.COLOR_RGB2BGR)  # Ensure BGR format
-        mask = ctx.mask  # Assuming mask is (H,W) or (H,W,1)
-
-        # Ensure mask is single-channel and binary (0 or 255)
-        if len(mask.shape) == 3:
-            mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)  # Convert 3-channel mask to grayscale
-        _, binary_mask = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)  # Force binary
-
-        # Merge BGR image + mask into BGRA (transparency)
-        img_bgra = cv2.cvtColor(normal_img, cv2.COLOR_BGR2BGRA)  # Convert to BGRA first
-        img_bgra[:, :, 3] = binary_mask
-
-        target_output_path = ctx.save_text_file  + 'inpainted_mask/' + os.path.splitext(image_path)[0].split('/')[-1] + '_masked.png'
-        os.makedirs(ctx.save_text_file  + 'inpainted_mask/', exist_ok=True)
-        cv2.imwrite(target_output_path, img_bgra)
-
 class MangaTranslatorWeb(MangaTranslator):
     """
     Translator client that executes tasks on behalf of the webserver in web_main.py.
