@@ -674,19 +674,42 @@ class MangaTranslator():
 
 
         ################## filter_pure_painted
-        def is_pure_color_region(img, coords, threshold=1):
-            # Create a mask for the polygon
-            mask = np.zeros(img.shape[:2], dtype=np.uint8)
-            cv2.fillPoly(mask, [np.array(coords)], 255)
-            
-            # Get the mean and standard deviation of the masked region
-            mean, stddev = cv2.meanStdDev(img, mask=mask)
-            
-            # For color images, we check all channels
-            if len(stddev) > 1:
-                return all(s[0] < threshold for s in stddev)
-            else:
-                return stddev[0] < threshold
+        def is_pure_color_region(img, coords, color_threshold=3, coverage_threshold=0.95):
+          """
+          Check if at least 90% of pixels in region are within color_threshold of average color
+          Returns:
+              - True/False if region meets threshold
+              - RGB color if True, None if False
+          """
+          # Create mask for polygon
+          mask = np.zeros(img.shape[:2], dtype=np.uint8)
+          cv2.fillPoly(mask, [np.array(coords, dtype=np.int32)], 255)
+          
+          # Get visible pixels (ignore transparent)
+          region = img[mask > 0]
+          if len(region) == 0:
+              return False, None
+          
+          # Convert to RGB if needed
+          if region.shape[1] == 4:  # RGBA
+              visible = region[region[:, 3] > 0][:, :3]  # Only opaque pixels
+          else:  # Assume RGB/BGR
+              visible = region
+          
+          if len(visible) == 0:
+              return False, None
+          
+          # Calculate average color (in RGB)
+          avg_color = np.mean(visible, axis=0)
+          
+          # Calculate color distances (Euclidean in RGB space)
+          distances = np.sqrt(np.sum((visible - avg_color) ** 2, axis=1))
+          
+          # Check if enough pixels are within threshold
+          coverage = np.sum(distances <= color_threshold) / len(visible)
+          if coverage >= coverage_threshold:
+              return True, avg_color.tolist()  # Return RGB color
+          return False, None
 
         def filter_pure_painted(ctx):
             img = ctx.gimp_mask
@@ -694,7 +717,8 @@ class MangaTranslator():
             regions = []
             for r in ctx.text_regions:
                 regions.append(r.lines.tolist()[0])
-            
+            print('___________REGION : ')
+            print(regions)
             same_color_result = []            
             
             # Convert to RGBA for transparency support
@@ -707,12 +731,12 @@ class MangaTranslator():
             # Process each region
             for i, region in enumerate(regions):
                 region_np = np.array(region, dtype=np.int32)
-                is_pure = is_pure_color_region(img, region_np)
+                is_pure, mean_color = is_pure_color_region(img, region_np)
                 
                 if is_pure:
-                    same_color_result.append(1)
+                    same_color_result.append(mean_color)
                 else:
-                    same_color_result.append(0)
+                    same_color_result.append(None)
                     
                     # Create mask for this region
                     mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
@@ -725,7 +749,7 @@ class MangaTranslator():
                         else:  # Alpha channel
                             non_pure_img[:, :, c] = np.where(mask==255, 255, non_pure_img[:, :, c])
             
-            
+            print(same_color_result,'\n/nwwwwwwwwwwwwwwwwww')
             return  non_pure_img, same_color_result
 
                     
