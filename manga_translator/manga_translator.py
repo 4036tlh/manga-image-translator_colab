@@ -667,10 +667,11 @@ class MangaTranslator():
         s = f'\n[{image_path}]\n'
 
 
-        
+        '''
         target_output_path = ctx.save_text_file  + 'pure_mask_img/' + os.path.splitext(image_path)[0].split('/')[-1] + '_pure_mask.jpg'
         os.makedirs(ctx.save_text_file  + 'pure_mask_img/', exist_ok=True)
         cv2.imwrite(target_output_path, ctx.mask)
+        '''
 
 
         ################## filter_pure_painted
@@ -708,7 +709,13 @@ class MangaTranslator():
           # Check if enough pixels are within threshold
           coverage = np.sum(distances <= color_threshold) / len(visible)
           if coverage >= coverage_threshold:
-              return True, avg_color.tolist()  # Return RGB color
+              color_result = []
+              for c in avg_color.tolist():
+                if c > 250: color_result.append(255)
+                elif c < 5: color_result.append(0)
+                else:  color_result.append(int(c))
+                
+              return True, color_result  # Return RGB color
           return False, None
 
         def filter_pure_painted(ctx):
