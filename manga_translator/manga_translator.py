@@ -755,7 +755,7 @@ class MangaTranslator():
                             else:  # Alpha channel
                                 non_pure_img[:, :, c] = np.where(mask==255, 255, non_pure_img[:, :, c])
                     
-                    same_color_results.append(same_color_result)
+                same_color_results.append(same_color_result)
                     
             print(same_color_results,'\n/nwwwwwwwwwwwwwwwwww')
             return  non_pure_img, same_color_results
