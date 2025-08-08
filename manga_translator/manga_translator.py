@@ -720,47 +720,48 @@ class MangaTranslator():
 
         def filter_pure_painted(ctx):
             img = ctx.gimp_mask
-
-            regions = []
-            for r in ctx.text_regions:
-                regions.append(r.lines.tolist()[0])
-            print('___________REGION : ')
-            print(regions)
-            same_color_result = []            
-            
-            # Convert to RGBA for transparency support
             img_rgba = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
                         
             # Prepare both output images
             labeled_img = img.copy()
             non_pure_img = np.zeros((img.shape[0], img.shape[1], 4), dtype=np.uint8)  # RGBA with transparency
             
-            # Process each region
-            for i, region in enumerate(regions):
-                region_np = np.array(region, dtype=np.int32)
-                is_pure, mean_color = is_pure_color_region(img, region_np)
+            same_color_results = []
+            for text_region in ctx.text_regions:
                 
-                if is_pure:
-                    same_color_result.append(mean_color)
-                else:
-                    same_color_result.append(None)
-                    
-                    # Create mask for this region
-                    mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
-                    cv2.fillPoly(mask, [region_np], 255)
-                    
-                    # Copy region to output with transparency
-                    for c in range(4):  # Copy all channels (RGBA)
-                        if c < 3:  # RGB channels
-                            non_pure_img[:, :, c] = np.where(mask==255, img[:, :, c], non_pure_img[:, :, c])
-                        else:  # Alpha channel
-                            non_pure_img[:, :, c] = np.where(mask==255, 255, non_pure_img[:, :, c])
+                regions = text_region.lines.tolist()
+                print('___________REGION : ')
+                print(regions)
+                same_color_result = []            
+                
+                for i, region in enumerate(regions):
             
-            print(same_color_result,'\n/nwwwwwwwwwwwwwwwwww')
-            return  non_pure_img, same_color_result
+                    region_np = np.array(region, dtype=np.int32)
+                    is_pure, mean_color = is_pure_color_region(img, region_np)
+                    
+                    if is_pure:
+                        same_color_result.append(mean_color)
+                    else:
+                        same_color_result.append(None)
+                        
+                        # Create mask for this region
+                        mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+                        cv2.fillPoly(mask, [region_np], 255)
+                        
+                        # Copy region to output with transparency
+                        for c in range(4):  # Copy all channels (RGBA)
+                            if c < 3:  # RGB channels
+                                non_pure_img[:, :, c] = np.where(mask==255, img[:, :, c], non_pure_img[:, :, c])
+                            else:  # Alpha channel
+                                non_pure_img[:, :, c] = np.where(mask==255, 255, non_pure_img[:, :, c])
+                    
+                    same_color_results.append(same_color_result)
+                    
+            print(same_color_results,'\n/nwwwwwwwwwwwwwwwwww')
+            return  non_pure_img, same_color_results
 
                     
-        mask_inpaint_removeWhite , same_color_result = filter_pure_painted(ctx)
+        mask_inpaint_removeWhite , same_color_results = filter_pure_painted(ctx)
 
         target_output_path = ctx.save_text_file  + 'inpainted_mask/' + os.path.splitext(image_path)[0].split('/')[-1] + '_masked.png'
         os.makedirs(ctx.save_text_file  + 'inpainted_mask/', exist_ok=True)
@@ -792,7 +793,7 @@ class MangaTranslator():
                 "font_size": region.font_size,
                 "direction": region.direction,
                 "prob": region.prob,
-                "same_color": same_color_result[idx],
+                "same_color": same_color_results[idx],
                 "valid": 1
             }
             #extracted_datas[idx] = extracted_data
